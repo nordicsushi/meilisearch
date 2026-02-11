@@ -435,8 +435,19 @@ pub fn select_values<'a>(
   fn main() {}
   ```
   利用规则3， return value是可以被标注为&self的生命周期的，但是其实返回值的生命周期是受制于x, y的。这个时候，编译器会报错，我们还是需要手动标注。
-  
 
+  现在让我们来回看permissive_json_pointer中的代码。
+  其实我不是很懂这里为什么必须要标记，之后可以看看有没有类似的代码比较一下，但是
+  AI大致的解释就是，这里标注的意思是selectors中产生的引用是在使用函数select_values期间是有效的（我寻思这不废话吗，都传进来了还能无效吗？）
+  ```rust
+  pub fn select_values<'a>(
+    value: &Map<String, Value>,
+    selectors: impl IntoIterator<Item = &'a str>,
+  ) -> Map<String, Value> {
+    let selectors = selectors.into_iter().collect();
+    create_value(value, selectors)
+  }
+  ```
 
 
 
