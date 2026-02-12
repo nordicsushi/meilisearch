@@ -1,0 +1,41 @@
+graph TB
+    %% 公共 API 函数
+    map_leaf_values["map_leaf_values<br/>(公共 API)<br/>映射选中的叶子值"]
+    map_leaf_values_in_object["map_leaf_values_in_object<br/>(公共 API)<br/>在对象中映射叶子值"]
+    map_leaf_values_in_array["map_leaf_values_in_array<br/>(公共 API)<br/>在数组中映射叶子值"]
+    select_values["select_values<br/>(公共 API)<br/>选择并返回新的 JSON"]
+    
+    %% 私有内部函数
+    create_value["create_value<br/>(私有)<br/>创建包含选中字段的新文档"]
+    create_array["create_array<br/>(私有)<br/>创建包含选中字段的新数组"]
+    
+    %% 工具函数
+    contained_in["contained_in<br/>(私有)<br/>检查 selector 是否匹配 key"]
+    is_simple["is_simple<br/>(私有)<br/>检查 key 是否不含点号"]
+    
+    %% 依赖关系
+    map_leaf_values --> map_leaf_values_in_object
+    
+    map_leaf_values_in_object --> contained_in
+    map_leaf_values_in_object --> map_leaf_values_in_object
+    map_leaf_values_in_object --> map_leaf_values_in_array
+    
+    map_leaf_values_in_array --> map_leaf_values_in_object
+    map_leaf_values_in_array --> map_leaf_values_in_array
+    
+    select_values --> create_value
+    
+    create_value --> contained_in
+    create_value --> is_simple
+    create_value --> create_array
+    create_value --> create_value
+    
+    create_array --> create_array
+    create_array --> create_value
+    
+    %% 样式
+    classDef publicAPI fill:#4CAF50,stroke:#2E7D32,color:#fff,stroke-width:3px
+    classDef private fill:#9E9E9E,stroke:#424242,color:#fff,stroke-width:2px
+    
+    class map_leaf_values,map_leaf_values_in_object,map_leaf_values_in_array,select_values publicAPI
+    class create_value,create_array,contained_in,is_simple private

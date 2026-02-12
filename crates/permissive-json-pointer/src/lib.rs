@@ -4,7 +4,7 @@ use std::collections::HashSet;
 
 use serde_json::*;
 
-type Document = Map<String, Value>;
+type Document = Map<String, Value>; //Type Alias, 提高可读性
 
 const SPLIT_SYMBOL: char = '.';
 
@@ -19,7 +19,7 @@ const SPLIT_SYMBOL: char = '.';
 /// `animaux.chien.nom` match `animaux.chien`
 /// -----------------------------------------
 /// `animaux`    doesn't match `animaux.chien`
-/// `animaux.`   doesn't match `animaux`
+/// `animaux.`   doesn't match `animaux`  BUG: this should match!
 /// `animaux.ch` doesn't match `animaux.chien`
 /// `animau`     doesn't match `animaux`
 /// ```
@@ -164,12 +164,17 @@ pub fn select_values<'a>(
     value: &Map<String, Value>,
     selectors: impl IntoIterator<Item = &'a str>,
 ) -> Map<String, Value> {
-    let selectors = selectors.into_iter().collect();
+    let selectors: HashSet<&str> = selectors.into_iter().collect();
     create_value(value, selectors)
 }
 
 fn create_value(value: &Document, mut selectors: HashSet<&str>) -> Document {
     let mut new_value: Document = Map::new();
+
+    // println!("===================");
+    // println!("Doc: {:#?}", value);
+    // println!("selectors: {:?}", selectors);
+    // println!("===================");
 
     for (key, value) in value.iter() {
         // first we insert all the key at the root level
@@ -177,6 +182,7 @@ fn create_value(value: &Document, mut selectors: HashSet<&str>) -> Document {
             new_value.insert(key.to_string(), value.clone());
             // if the key was simple we can delete it and move to
             // the next key
+            // 不包含 . 的话，直接在selector去掉，说明已经匹配完毕。
             if is_simple(key) {
                 selectors.remove(key as &str);
                 continue;
@@ -188,13 +194,16 @@ fn create_value(value: &Document, mut selectors: HashSet<&str>) -> Document {
         // `person`. Then we generate the following sub selectors: [name, age].
         let sub_selectors: HashSet<&str> = selectors
             .iter()
-            .filter(|s| contained_in(s, key))
-            .filter_map(|s| s.trim_start_matches(key).get(SPLIT_SYMBOL.len_utf8()..))
+            .filter(|s| contained_in(s, key)) // 检测这个所有的selectors中是否是以key开头并且后面紧跟一个 .
+            .filter_map(|s| s.trim_start_matches(key).get(SPLIT_SYMBOL.len_utf8()..)) // 去掉上一层的key以及SPLIT_SYMBOL
             .collect();
 
+        // 继续匹配到的当的key的下一层selectors
         if !sub_selectors.is_empty() {
+            // 检查当前的这个key下面的item是Array还是另外一个嵌套的 json object
             match value {
                 Value::Array(array) => {
+                    // 传入array, 以及 所有这一层的sub_selectors, 我们的example就是 [name, avg]
                     let array = create_array(array, &sub_selectors);
                     if !array.is_empty() {
                         new_value.insert(key.to_string(), array.into());
@@ -231,6 +240,9 @@ fn create_array(array: &[Value], selectors: &HashSet<&str>) -> Vec<Value> {
                     res.push(Value::Array(vec![]));
                 }
             }
+            // 直到某一个时刻，我们会到达最底层的object的
+            // 如果匹配到的是Object, 在我们的例子中就是{"name": "bernese mountain", "avg_age": 12, "size": "80cm"}
+            // 然后我们的selectors是谁[name, avg], 之后就又可以调用create_value
             Value::Object(object) => {
                 let object = create_value(object, selectors.clone());
                 if !object.is_empty() {
@@ -257,6 +269,7 @@ mod tests {
     #[test]
     fn test_contained_in() {
         assert!(contained_in("animaux", "animaux"));
+        assert!(contained_in("animaux.", "animaux"));
         assert!(contained_in("animaux.chien", "animaux"));
         assert!(contained_in("animaux.chien.race.bouvier bernois.fourrure.couleur", "animaux"));
         assert!(contained_in(

@@ -1,0 +1,16 @@
+{
+    "name": "peanut",
+    "age": 8,
+    "race": [
+        {
+            "name": "bernese mountain",
+            "avg_age": 12,
+            "size": "80cm"
+        },
+        {
+            "name": "cat",
+            "avg_age": 5,
+            "size": "100cm"
+        }
+    ]
+}
